@@ -1,5 +1,6 @@
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{web, App, HttpResponse, HttpServer, Responder, middleware::Logger};
 use serde::Deserialize;
+use env_logger::Env;
 
 #[derive(Deserialize)]
 struct PlistQuery {
@@ -53,13 +54,29 @@ async fn generate_plist(query: web::Query<PlistQuery>) -> impl Responder {
         .body(plist_xml)
 }
 
+async fn status() -> impl Responder {
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": "running",
+        "endpoints": {
+            "GET /": "Server status and documentation",
+            "GET /genPlist": "Generate iOS installation manifest (query params: bundleid, name, version, fetchurl)"
+        }
+    }))
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
+
+    println!("Starting server at http://0.0.0.0:3788");
+    
     HttpServer::new(|| {
         App::new()
+            .wrap(Logger::default())
+            .route("/", web::get().to(status))
             .route("/genPlist", web::get().to(generate_plist))
     })
-    .bind("127.0.0.1:3788")?
+    .bind("0.0.0.0:3788")?
     .run()
     .await
 }

@@ -1,0 +1,10 @@
+services:
+  plistserver:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: plistserver
+    ports:
+      - "3788:3788"
+    command: cargo run --release
