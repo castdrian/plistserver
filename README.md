@@ -1,15 +1,11 @@
-# plistServer-free
-A Rust server used for QuickSign to serve install manifests under HTTPS (as required by iOS)
+# plistserver
+A Rust server used to serve install manifests under HTTPS (as required by iOS)
 
-This is licensed under the GPLv3 so you are free to use this anywhere (as long as it's under the GPLv3) under the terms of the GPLv3
+## Usage
 
-## How to run
-1. Make sure you have [Rust](https://www.rust-lang.org/tools/install) installed.
+```bash
+sudo docker compose up --build
+```
 
-2. Go into the server's cloned directory, and simply run `cargo run`
-
-## Credits
-plistServer was originally written by the QuickSign team.
-[Source](https://github.com/QuickSign-Team/plistserver)
-[c22dev](https://github.com/c22dev)
-[boredcoder411](https://github.com/boredcoder411)
+## Contributors
+[![Contributors](https://contrib.rocks/image?repo=castdrian/plistserver)](https://github.com/castdrian/plistserver/graphs/contributors)
