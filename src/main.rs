@@ -1,6 +1,7 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder, middleware::Logger};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use env_logger::Env;
+use log::info;
 
 #[derive(Deserialize)]
 struct PlistQuery {
@@ -10,47 +11,55 @@ struct PlistQuery {
     fetchurl: String,
 }
 
-static PLIST_TEMPLATE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>items</key>
-    <array>
-        <dict>
-            <key>assets</key>
-            <array>
-                <dict>
-                    <key>kind</key>
-                    <string>software-package</string>
-                    <key>url</key>
-                    <string>{fetchurl}</string>
-                </dict>
-            </array>
-            <key>metadata</key>
-            <dict>
-                <key>bundle-identifier</key>
-                <string>{bundleid}</string>
-                <key>bundle-version</key>
-                <string>{version}</string>
-                <key>kind</key>
-                <string>software</string>
-                <key>title</key>
-                <string>{name}</string>
-            </dict>
-        </dict>
-    </array>
-</dict>
-</plist>"#;
+#[derive(Serialize)]
+struct Asset {
+    kind: String,
+    url: String,
+}
+
+#[derive(Serialize)]
+struct Metadata {
+    #[serde(rename = "bundle-identifier")]
+    bundle_identifier: String,
+    #[serde(rename = "bundle-version")]
+    bundle_version: String,
+    kind: String,
+    title: String,
+}
+
+#[derive(Serialize)]
+struct PlistItem {
+    assets: Vec<Asset>,
+    metadata: Metadata,
+}
+
+#[derive(Serialize)]
+struct PlistRoot {
+    items: Vec<PlistItem>,
+}
 
 async fn generate_plist(query: web::Query<PlistQuery>) -> impl Responder {
-    let plist_xml = PLIST_TEMPLATE
-        .replace("{bundleid}", &query.bundleid)
-        .replace("{version}", &query.version)
-        .replace("{name}", &query.name)
-        .replace("{fetchurl}", &query.fetchurl);
+    let plist = PlistRoot {
+        items: vec![PlistItem {
+            assets: vec![Asset {
+                kind: "software-package".to_string(),
+                url: query.fetchurl.clone(),
+            }],
+            metadata: Metadata {
+                bundle_identifier: query.bundleid.clone(),
+                bundle_version: query.version.clone(),
+                kind: "software".to_string(),
+                title: query.name.clone(),
+            },
+        }],
+    };
+
+    let mut buf = Vec::new();
+    plist::to_writer_xml(&mut buf, &plist).unwrap();
+    let plist_xml = String::from_utf8(buf).unwrap();
 
     HttpResponse::Ok()
-        .content_type("application/octet-stream")
+        .content_type("application/x-plist")
         .body(plist_xml)
 }
 
@@ -68,7 +77,7 @@ async fn status() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-    println!("Starting server at http://0.0.0.0:3788");
+    info!("Starting server at http://0.0.0.0:3788");
     
     HttpServer::new(|| {
         App::new()
